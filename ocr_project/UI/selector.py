@@ -117,23 +117,40 @@ class SelectorWindow:
             return
 
         left, top, right, bottom = self.selected_region
-        if right - left < 2 or bottom - top < 2:
-            messagebox.showwarning("Notice", "Selection is too small.")
+        width = right - left
+        height = bottom - top
+        
+        if width < 10 or height < 10:
+            messagebox.showwarning("Notice", "Selection is too small. Minimum 10x10 pixels required.")
             return
 
-        try:
-            self.win.withdraw()
-            self.win.update_idletasks()
-            img = ImageGrab.grab(bbox=(left, top, right, bottom))
+        self.info_var.set(f"Capturing... {width}x{height}")
+        self.win.update()
 
+        try:
+            # 캡처 전 화면 업데이트
+            self.win.update_idletasks()
+            
+            # 이미지 캡처
+            img = ImageGrab.grab(bbox=(left, top, right, bottom))
+            
+            # 캡처 결과 확인
+            img_width, img_height = img.size
+            self.info_var.set(f"Captured: {img_width}x{img_height} pixels")
+            self.win.update()
+            
+            # 저장
             out_dir = Path(__file__).resolve().parent / "captures"
             out_dir.mkdir(parents=True, exist_ok=True)
             name = f"capture_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
             path = out_dir / name
             img.save(path)
             self.capture_path = str(path)
+            
+            self.info_var.set(f"Saved: {name}")
+            self.win.update()
+            
         except Exception as exc:
-            self.win.deiconify()
             messagebox.showerror("Error", f"Capture failed.\n{exc}")
             return
 
@@ -141,12 +158,15 @@ class SelectorWindow:
         ocr_text = []
         if self.ocr_engine and self.capture_path:
             self.info_var.set("Processing OCR...")
-            self.win.deiconify()
             self.win.update()
             try:
                 ocr_text = self.ocr_engine.read_text_simple(self.capture_path)
-            except Exception:
-                pass  # OCR is optional
+                if ocr_text:
+                    self.info_var.set(f"OCR: {len(ocr_text)} text(s) found")
+                else:
+                    self.info_var.set("No text detected")
+            except Exception as e:
+                self.info_var.set(f"OCR failed: {e}")
 
         self._emit_callback_and_close(ocr_text)
 

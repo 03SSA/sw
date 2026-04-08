@@ -10,6 +10,28 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Module-level shared OCREngine instance
+_shared_engine: Optional['OCREngine'] = None
+
+
+def get_ocr_engine() -> Optional['OCREngine']:
+    """
+    Get the shared OCREngine instance.
+    Creates it on first call, then reuses the same instance.
+    
+    Returns:
+        Shared OCREngine instance, or None if OCREngine is not available.
+    
+    Example:
+        >>> engine = get_ocr_engine()
+        >>> if engine:
+        ...     result = engine.read_text('image.jpg')
+    """
+    global _shared_engine
+    if _shared_engine is None and easyocr is not None:
+        _shared_engine = OCREngine()
+    return _shared_engine
+
 
 class OCREngine:
     """

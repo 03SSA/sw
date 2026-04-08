@@ -129,7 +129,7 @@ class OverlayWindow:
 
     def _try_save_with_db(self, content: str) -> bool:
         try:
-            import db
+            from CORE import db
         except Exception:
             return False
 

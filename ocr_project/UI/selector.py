@@ -10,9 +10,9 @@ except Exception:
     ImageGrab = None
 
 try:
-    from CORE.ocr_engine import OCREngine
+    from CORE.ocr_engine import get_ocr_engine
 except ImportError:
-    OCREngine = None
+    get_ocr_engine = None
 
 
 class SelectorWindow:
@@ -25,7 +25,7 @@ class SelectorWindow:
         self.rect_id = None
         self.selected_region = None
         self.capture_path = None
-        self.ocr_engine = OCREngine() if OCREngine else None
+        self.ocr_engine = get_ocr_engine() if get_ocr_engine else None
 
         self.win = tk.Toplevel(parent)
         self.win.title("Region Selector")

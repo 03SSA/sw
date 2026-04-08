@@ -2,7 +2,7 @@ import random
 import tkinter as tk
 from tkinter import messagebox
 
-import db
+from CORE import db
 
 
 class TestWindow:

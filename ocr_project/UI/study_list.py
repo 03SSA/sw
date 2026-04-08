@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-import db
+from CORE import db
 
 
 class StudyListWindow:

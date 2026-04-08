@@ -35,3 +35,7 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# App-specific
+ocr_project/CORE/ocr_study.db
+ocr_project/UI/captures/

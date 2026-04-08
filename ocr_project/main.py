@@ -11,6 +11,7 @@ class MainApp:
 
         self.selected_region = None
         self.capture_path = None
+        self.ocr_text = []
 
         self._build_ui()
 
@@ -47,11 +48,19 @@ class MainApp:
         tk.Button(self.root, text="Open Study List", command=self.open_study_list, **btn_style).pack(pady=6)
         tk.Button(self.root, text="Open Test UI", command=self.open_test_ui, **btn_style).pack(pady=6)
 
-    def _on_region_selected(self, region, capture_path=None) -> None:
+    def _on_region_selected(self, region, capture_path=None, ocr_text=None) -> None:
         self.selected_region = region
         self.capture_path = capture_path
+        self.ocr_text = ocr_text or []
+        
         self.region_label_var.set(f"Selected Region: {region}")
         self.capture_label_var.set(f"Capture Path: {capture_path or 'None'}")
+        
+        # Show OCR preview
+        if self.ocr_text:
+            preview = '\n'.join(self.ocr_text)
+            truncated = preview[:100] + ('...' if len(preview) > 100 else '')
+            self.capture_label_var.set(f"OCR: {truncated}")
 
     def open_selector(self) -> None:
         try:
@@ -67,8 +76,14 @@ class MainApp:
         try:
             from overlay import open_overlay_window
 
+            # Use OCR text if available
+            if self.ocr_text:
+                initial_text = '\n'.join(self.ocr_text)
+            else:
+                initial_text = "OCR result preview\n\n- Non-intrusive transparent overlay"
+            
             payload = {
-                "initial_text": "OCR result preview\n\n- Non-intrusive transparent overlay",
+                "initial_text": initial_text,
                 "selected_region": self.selected_region,
                 "capture_path": self.capture_path,
             }

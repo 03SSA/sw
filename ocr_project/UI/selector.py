@@ -1,4 +1,4 @@
-﻿import os
+import os
 from datetime import datetime
 from pathlib import Path
 import tkinter as tk
@@ -8,6 +8,11 @@ try:
     from PIL import ImageGrab
 except Exception:
     ImageGrab = None
+
+try:
+    from CORE.ocr_engine import OCREngine
+except ImportError:
+    OCREngine = None
 
 
 class SelectorWindow:
@@ -20,6 +25,7 @@ class SelectorWindow:
         self.rect_id = None
         self.selected_region = None
         self.capture_path = None
+        self.ocr_engine = OCREngine() if OCREngine else None
 
         self.win = tk.Toplevel(parent)
         self.win.title("Region Selector")
@@ -131,14 +137,25 @@ class SelectorWindow:
             messagebox.showerror("Error", f"Capture failed.\n{exc}")
             return
 
-        self._emit_callback_and_close()
+        # Run OCR
+        ocr_text = []
+        if self.ocr_engine and self.capture_path:
+            self.info_var.set("Processing OCR...")
+            self.win.deiconify()
+            self.win.update()
+            try:
+                ocr_text = self.ocr_engine.read_text_simple(self.capture_path)
+            except Exception:
+                pass  # OCR is optional
 
-    def _emit_callback_and_close(self) -> None:
+        self._emit_callback_and_close(ocr_text)
+
+    def _emit_callback_and_close(self, ocr_text=None) -> None:
         if callable(self.on_selected):
             try:
-                self.on_selected(self.selected_region, self.capture_path)
+                self.on_selected(self.selected_region, self.capture_path, ocr_text or [])
             except TypeError:
-                self.on_selected(self.selected_region)
+                self.on_selected(self.selected_region, self.capture_path)
         self.win.destroy()
 
 

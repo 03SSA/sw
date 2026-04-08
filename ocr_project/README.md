@@ -1,4 +1,4 @@
-# -sw-
+# ocr_study_app
 
 Python tkinter 구조
 

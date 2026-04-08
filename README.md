@@ -1,1 +1,1 @@
-# -sw-
+# ocr_study_app

@@ -4,6 +4,9 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 import json
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     import numpy as np
@@ -25,6 +28,13 @@ except ImportError:
 
 from CORE.ocr_engine import create_ocr_engine
 
+# Configuration constants
+DEFAULT_MAX_TRANSLATION_CHUNK_LENGTH = 1500
+DEFAULT_TRANSLATION_TIMEOUT = 10
+DEFAULT_SHARPNESS_RADIUS = 1
+DEFAULT_SHARPNESS_PERCENT = 130
+DEFAULT_SHARPNESS_THRESHOLD = 3
+
 
 @dataclass
 class OCRTranslationResult:
@@ -44,12 +54,16 @@ class OCRService:
         self.contrast_factor = 1.6
         self.sharpness_factor = 1.4
 
-    def recognize_image_raw(self, image) -> List[str]:
+    def _check_availability(self) -> None:
+        """Check if OCR engine and required dependencies are available."""
         if self.engine is None:
             raise RuntimeError("OCR engine is not available.")
         if np is None:
             raise RuntimeError("numpy is not installed.")
 
+    def recognize_image_raw(self, image) -> List[str]:
+        """Recognize text from image without preprocessing."""
+        self._check_availability()
         image_array = np.array(image)
         result = self.engine.read_text_simple(image_array)
         return [line.strip() for line in result if line and line.strip()]
@@ -73,10 +87,8 @@ class OCRService:
         return self.engine is not None and np is not None and self.engine.is_available()
 
     def recognize_image(self, image) -> List[str]:
-        if self.engine is None:
-            raise RuntimeError("OCR engine is not available.")
-        if np is None:
-            raise RuntimeError("numpy is not installed.")
+        """Recognize text from image with preprocessing."""
+        self._check_availability()
         if not self.engine.is_available():
             raise RuntimeError("OCR engine failed to initialize for the selected language pair.")
 
@@ -123,7 +135,11 @@ class OCRService:
             prepared = ImageEnhance.Contrast(prepared).enhance(self.contrast_factor)
             prepared = ImageEnhance.Sharpness(prepared).enhance(self.sharpness_factor)
             prepared = prepared.filter(
-                ImageFilter.UnsharpMask(radius=1, percent=130, threshold=3)
+                ImageFilter.UnsharpMask(
+                    radius=DEFAULT_SHARPNESS_RADIUS,
+                    percent=DEFAULT_SHARPNESS_PERCENT,
+                    threshold=DEFAULT_SHARPNESS_THRESHOLD
+                )
             )
 
             return prepared
@@ -175,6 +191,7 @@ class OCRService:
         source_language: str = "auto",
         target_language: str = "ko",
     ) -> str:
+        """Translate text to target language."""
         clean_text = self.clean_text_for_translation(text)
 
         if not clean_text:
@@ -191,23 +208,33 @@ class OCRService:
 
         chunks = self._split_translation_chunks(clean_text)
         translated_chunks = []
+        failed_chunks = []
 
-        for chunk in chunks:
-            translated = self._translate_chunk(
-                chunk,
-                source_language=normalized_source,
-                target_language=normalized_target,
-            )
+        for idx, chunk in enumerate(chunks):
+            try:
+                translated = self._translate_chunk(
+                    chunk,
+                    source_language=normalized_source,
+                    target_language=normalized_target,
+                )
 
-            if translated:
-                translated_chunks.append(translated)
+                if translated:
+                    translated_chunks.append(translated)
+                else:
+                    failed_chunks.append(idx)
+                    logger.warning(f"Failed to translate chunk {idx}: {chunk[:50]}...")
+            except Exception as e:
+                failed_chunks.append(idx)
+                logger.error(f"Error translating chunk {idx}: {str(e)}")
 
         if translated_chunks:
+            if failed_chunks:
+                logger.info(f"Partially translated: {len(translated_chunks)}/{len(chunks)} chunks")
             return "\n".join(translated_chunks).strip()
 
         raise RuntimeError(
-            "Translation is not available. Install deep-translator with "
-            "`pip install deep-translator`, check the internet connection, then try again."
+            "Translation failed for all chunks. Install deep-translator with "
+            "`pip install deep-translator`, check internet connection, then try again."
         )
 
     def join_lines(self, lines: List[str]) -> str:
@@ -246,7 +273,7 @@ class OCRService:
 
         return joined.strip()
 
-    def _split_translation_chunks(self, text: str, max_length: int = 1500) -> List[str]:
+    def _split_translation_chunks(self, text: str, max_length: int = DEFAULT_MAX_TRANSLATION_CHUNK_LENGTH) -> List[str]:
         paragraphs = [part.strip() for part in re.split(r"\n+", text) if part.strip()]
         chunks = []
         current = ""
@@ -345,9 +372,10 @@ class OCRService:
         source_language: str,
         target_language: str,
     ) -> Optional[str]:
+        """Translate using Google Translate web API."""
         url = (
-            "https://translate.googleapis.com/translate_a/single"
-            "?client=gtx"
+            "https://translate.googleapis.com/translate_a/single?"
+            "client=gtx"
             f"&sl={quote(source_language)}"
             f"&tl={quote(target_language)}"
             "&dt=t"
@@ -362,14 +390,17 @@ class OCRService:
         )
 
         try:
-            with urlopen(request, timeout=10) as response:
+            with urlopen(request, timeout=DEFAULT_TRANSLATION_TIMEOUT) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Google Translate API error: {str(e)}")
             return None
 
         try:
             translated_parts = [part[0] for part in payload[0] if part and part[0]]
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Error parsing translation response: {str(e)}")
             return None
 
-        return "".join(translated_parts).strip() or None
+        result = "".join(translated_parts).strip()
+        return result if result else None

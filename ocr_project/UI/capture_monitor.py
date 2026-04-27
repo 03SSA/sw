@@ -1,8 +1,11 @@
 from typing import Callable, Optional, Tuple
+import logging
 
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+
+logger = logging.getLogger(__name__)
 
 try:
     from PIL import ImageGrab
@@ -20,6 +23,7 @@ Region = Tuple[int, int, int, int]
 
 
 class CaptureMonitor:
+    """Monitor screen region and capture OCR frames at intervals."""
     def __init__(
         self,
         parent: tk.Misc,
@@ -30,6 +34,17 @@ class CaptureMonitor:
         on_stop: Optional[Callable[[], None]] = None,
         on_translate: Optional[Callable[[], None]] = None,
     ) -> None:
+        """Initialize capture monitor.
+        
+        Args:
+            parent: Parent window
+            region: Capture region (x1, y1, x2, y2)
+            interval_seconds: Capture interval in seconds
+            on_frame: Callback when frame is captured
+            on_save: Callback when save is requested
+            on_stop: Callback when stopped
+            on_translate: Callback when translation is requested
+        """
         self.parent = parent
         self.region = region
         self.interval_seconds = interval_seconds
@@ -91,8 +106,6 @@ class CaptureMonitor:
             justify="left",
         ).pack(anchor="w", padx=12, pady=(8, 0))
 
-        self.on_translate = None  
-
         btn_row2 = tk.Frame(self.win, bg="#1a1a2e")
         btn_row2.pack(fill="x", padx=12, pady=(8, 12), side="bottom")
 
@@ -127,8 +140,6 @@ class CaptureMonitor:
         self.result_text.pack(fill="both", expand=True)
         scrollbar.config(command=self.result_text.yview)
         self.result_text.insert("1.0", "Waiting for OCR result...")
-
-        btn_row = btn_row
 
         tk.Label(
             btn_row,
@@ -239,6 +250,7 @@ class CaptureMonitor:
             self.win.focus_force()
 
     def _capture_loop(self) -> None:
+        """Capture frames at regular intervals."""
         if not self.active:
             return
 
@@ -246,25 +258,31 @@ class CaptureMonitor:
         self.capture_job = self.parent.after(int(self.interval_seconds * 1000), self._capture_loop)
 
     def _capture_once(self, force: bool) -> None:
+        """Capture single frame from screen region."""
         if not self.active:
             return
 
-        image = self._grab_screen()
-        if image is None:
-            self.set_status("Capture failed: Unable to capture screen.")
-            return
+        try:
+            image = self._grab_screen()
+            if image is None:
+                self.set_status("Capture failed: Unable to capture screen.")
+                return
 
-        if callable(self.on_frame):
-            self.on_frame(self.region, image, force)
+            if callable(self.on_frame):
+                self.on_frame(self.region, image, force)
+        except Exception as exc:
+            logger.error(f"Error in capture: {exc}")
+            self.set_status(f"Capture error: {str(exc)[:50]}")
 
     def _grab_screen(self):
+        """Grab screen image from region using PIL or mss."""
         x1, y1, x2, y2 = self.region
 
         if ImageGrab is not None:
             try:
                 return ImageGrab.grab(bbox=(x1, y1, x2, y2))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug(f"ImageGrab failed: {exc}")
 
         if MSS is not None:
             try:
@@ -272,11 +290,11 @@ class CaptureMonitor:
                     monitor = {"top": y1, "left": x1, "width": x2 - x1, "height": y2 - y1}
                     screenshot = sct.grab(monitor)
                     from PIL import Image
-
                     return Image.frombytes("RGB", screenshot.size, screenshot.rgb)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug(f"MSS failed: {exc}")
 
+        logger.error("No screen capture method available (PIL or mss)")
         return None
 
     def request_capture_now(self) -> None:

@@ -1,11 +1,15 @@
 ﻿import datetime
 import os
+import logging
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
+
+logger = logging.getLogger(__name__)
 
 
 class OverlayWindow:
+    """Non-intrusive overlay window for displaying OCR results."""
     def __init__(
         self,
         parent: tk.Misc,
@@ -13,8 +17,18 @@ class OverlayWindow:
         selected_region=None,
         capture_path: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
-        on_saved=None,
+        on_saved: Optional[Callable[[str], None]] = None,
     ) -> None:
+        """Initialize overlay window.
+        
+        Args:
+            parent: Parent window
+            initial_text: Initial text to display
+            selected_region: Selected region info
+            capture_path: Path to captured image
+            data: Additional data dictionary
+            on_saved: Callback when text is saved
+        """
         self.parent = parent
         self.on_saved = on_saved
 
@@ -39,6 +53,7 @@ class OverlayWindow:
         self._build_ui()
         self._render_meta()
         self.set_result_text(initial_text or self._default_text())
+        logger.info("Overlay window created")
 
     def is_open(self) -> bool:
         return bool(getattr(self, "win", None) and self.win.winfo_exists())
@@ -119,6 +134,7 @@ class OverlayWindow:
         messagebox.showinfo("Done", "Copied overlay text.")
 
     def save_result(self) -> None:
+        """Save overlay text to database or file."""
         content = self.get_result_text()
         if not content:
             messagebox.showwarning("Notice", "No content to save.")
@@ -126,19 +142,24 @@ class OverlayWindow:
 
         saved = self._try_save_with_db(content)
         if saved:
+            logger.info("Content saved to database")
             messagebox.showinfo("Done", "Saved to database.")
             if callable(self.on_saved):
                 self.on_saved(content)
             return
 
         saved = self._save_to_txt_file(content)
-        if saved and callable(self.on_saved):
-            self.on_saved(content)
+        if saved:
+            logger.info("Content saved to text file")
+            if callable(self.on_saved):
+                self.on_saved(content)
 
     def _try_save_with_db(self, content: str) -> bool:
+        """Try to save content to database."""
         try:
             from CORE import db
-        except Exception:
+        except Exception as exc:
+            logger.debug(f"Database import failed: {exc}")
             return False
 
         region_str = str(self.selected_region) if self.selected_region else None
@@ -147,22 +168,25 @@ class OverlayWindow:
         if callable(save_ocr):
             try:
                 save_ocr(content=content, source_region=region_str)
+                logger.info("Content saved via save_ocr_result")
                 return True
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(f"save_ocr_result failed: {exc}")
 
         for name in ("save_study_item", "insert_ocr_result"):
             fn = getattr(db, name, None)
             if callable(fn):
                 try:
                     fn(content)
+                    logger.info(f"Content saved via {name}")
                     return True
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning(f"{name} failed: {exc}")
 
         return False
 
     def _save_to_txt_file(self, content: str) -> bool:
+        """Save content to text file with file dialog."""
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         initial_name = f"overlay_{timestamp}.txt"
 
@@ -174,14 +198,17 @@ class OverlayWindow:
             filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")],
         )
         if not file_path:
+            logger.debug("File save cancelled by user")
             return False
 
         try:
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
+            logger.info(f"File saved: {file_path}")
             messagebox.showinfo("Done", f"Saved file:\n{os.path.basename(file_path)}")
             return True
         except Exception as exc:
+            logger.error(f"Failed to save file: {exc}")
             messagebox.showerror("Error", f"Failed to save file.\n{exc}")
             return False
 

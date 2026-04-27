@@ -1,5 +1,6 @@
 import sys
 import threading
+import logging
 from hashlib import sha1
 from typing import List, Optional, Tuple
 
@@ -9,6 +10,8 @@ from tkinter import messagebox, ttk
 from CORE import db
 from CORE.ocr_service import OCRService
 from CORE.translation_service import TranslationService
+
+logger = logging.getLogger(__name__)
 
 
 Region = Tuple[int, int, int, int]

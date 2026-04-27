@@ -1,8 +1,10 @@
 import logging
 import textwrap
-from typing import Optional
+from typing import Optional, List
 
 logger = logging.getLogger(__name__)
+LANG_CHUNK_SIZE = 450
+LANG_TRANSLATION_SIZE_THRESHOLD = 500
 
 GoogleTranslator = None
 
@@ -38,6 +40,7 @@ class TranslationService:
         self._translator = None
 
     def translate(self, text: str) -> Optional[str]:
+        """Translate text to target language with chunking for long texts."""
         if not text or not text.strip():
             return None
 
@@ -46,30 +49,36 @@ class TranslationService:
 
         try:
             self._ensure_translator()
-            if len(text) <= 500:
+            if len(text) <= LANG_TRANSLATION_SIZE_THRESHOLD:
                 return self._translator.translate(text)
             else:
-                chunks = textwrap.wrap(text, 450, break_long_words=False)
+                chunks = textwrap.wrap(text, LANG_CHUNK_SIZE, break_long_words=False)
                 results = []
                 for chunk in chunks:
-                    t = GoogleTranslator(
-                        source=self.source if self.source != "auto" else "en",
-                        target=self.target
-                    ).translate(chunk)
-                    if t:
-                        results.append(t)
+                    try:
+                        t = self._translator.translate(chunk)
+                        if t:
+                            results.append(t)
+                    except Exception as chunk_exc:
+                        logger.warning(f"Failed to translate chunk: {chunk_exc}")
+                        continue
                 return " ".join(results) if results else None
         except Exception as exc:
             logger.error(f"Translation failed: {exc}")
             return None
 
-    def translate_batch(self, texts: list[str]) -> list[str]:
+    def translate_batch(self, texts: List[str]) -> List[str]:
+        """Translate multiple texts in batch (if supported by translator)."""
         if not texts:
             return []
         if GoogleTranslator is None:
             return []
         try:
             self._ensure_translator()
+            # Check if translate_batch method exists
+            if not hasattr(self._translator, 'translate_batch'):
+                # Fallback to individual translation
+                return [self.translate(text) or "" for text in texts]
             results = self._translator.translate_batch(texts)
             return list(results)
         except Exception as exc:

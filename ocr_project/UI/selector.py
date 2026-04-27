@@ -1,14 +1,24 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable
+import logging
 
 import tkinter as tk
 from tkinter import messagebox
+
+logger = logging.getLogger(__name__)
 
 
 Region = Tuple[int, int, int, int]
 
 
 class RegionSelectorWindow:
-    def __init__(self, parent: tk.Misc, on_selected=None) -> None:
+    """Window for selecting OCR capture region with visual feedback."""
+    def __init__(self, parent: tk.Misc, on_selected: Optional[Callable[["Region"], None]] = None) -> None:
+        """Initialize region selector.
+        
+        Args:
+            parent: Parent window
+            on_selected: Callback function when region is selected
+        """
         self.parent = parent
         self.on_selected = on_selected
         self.selected_region: Optional[Region] = None
@@ -86,6 +96,7 @@ class RegionSelectorWindow:
         ).pack(side="left", padx=(8, 0))
 
     def _on_mouse_down(self, event) -> None:
+        """Handle mouse button down event."""
         self.start_x = event.x
         self.start_y = event.y
 
@@ -103,6 +114,7 @@ class RegionSelectorWindow:
         )
 
     def _on_mouse_drag(self, event) -> None:
+        """Handle mouse drag event to draw selection rectangle."""
         if not self.rect_id:
             return
 
@@ -115,6 +127,7 @@ class RegionSelectorWindow:
         )
 
     def _on_mouse_up(self, event) -> None:
+        """Handle mouse button release to finalize selection."""
         if not self.rect_id:
             return
 
@@ -126,28 +139,48 @@ class RegionSelectorWindow:
         self.selected_region = (x1, y1, x2, y2)
         width = x2 - x1
         height = y2 - y1
+        logger.debug(f"Region selected: {width}x{height} at ({x1}, {y1})")
         self.info_var.set(f"Selected area: {width}x{height} | Click Use Area")
 
     def confirm_selection(self) -> None:
+        """Confirm and apply the selected region."""
         if not self.selected_region:
             messagebox.showwarning("Notice", "Please select an area first.")
             return
 
         x1, y1, x2, y2 = self.selected_region
         if x2 - x1 < 20 or y2 - y1 < 20:
-            messagebox.showwarning("Notice", "Area too small.")
+            messagebox.showwarning("Notice", "Area too small (minimum 20x20 pixels).")
             return
 
         region = self.selected_region
+        logger.info(f"Region confirmed: {region}")
         self.close()
 
         if callable(self.on_selected):
-            self.on_selected(region)
+            try:
+                self.on_selected(region)
+            except Exception as exc:
+                logger.error(f"Error in on_selected callback: {exc}")
 
     def close(self) -> None:
-        if getattr(self, "selection_win", None) and self.selection_win.winfo_exists():
-            self.selection_win.destroy()
+        """Close the selector window."""
+        try:
+            if getattr(self, "selection_win", None) and self.selection_win.winfo_exists():
+                self.selection_win.destroy()
+                logger.debug("Region selector window closed")
+        except Exception as exc:
+            logger.warning(f"Error closing selector window: {exc}")
 
 
-def open_selector_window(parent: tk.Misc, on_selected=None) -> RegionSelectorWindow:
+def open_selector_window(parent: tk.Misc, on_selected: Optional[Callable[[Region], None]] = None) -> RegionSelectorWindow:
+    """Open a region selector window.
+    
+    Args:
+        parent: Parent window
+        on_selected: Callback function when region is selected
+        
+    Returns:
+        RegionSelectorWindow instance
+    """
     return RegionSelectorWindow(parent, on_selected=on_selected)

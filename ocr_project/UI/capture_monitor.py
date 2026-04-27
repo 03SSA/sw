@@ -54,7 +54,7 @@ class CaptureMonitor:
         screen_height = self.parent.winfo_screenheight()
 
         panel_width = 480
-        panel_height = 450
+        panel_height = 550
         panel_x = min(max(10, x1), max(10, screen_width - panel_width - 10))
 
         if y2 + 10 + panel_height <= screen_height:
@@ -91,7 +91,13 @@ class CaptureMonitor:
             justify="left",
         ).pack(anchor="w", padx=12, pady=(8, 0))
 
-        self.on_translate = None  # Callback for translation
+        self.on_translate = None  
+
+        btn_row2 = tk.Frame(self.win, bg="#1a1a2e")
+        btn_row2.pack(fill="x", padx=12, pady=(8, 12), side="bottom")
+
+        btn_row = tk.Frame(self.win, bg="#1a1a2e")
+        btn_row.pack(fill="x", padx=12, pady=(8, 0), side="bottom")
 
         result_frame = tk.LabelFrame(
             self.win,
@@ -122,8 +128,7 @@ class CaptureMonitor:
         scrollbar.config(command=self.result_text.yview)
         self.result_text.insert("1.0", "Waiting for OCR result...")
 
-        btn_row = tk.Frame(self.win, bg="#1a1a2e")
-        btn_row.pack(fill="x", padx=12, pady=(8, 0))
+        btn_row = btn_row
 
         tk.Label(
             btn_row,
@@ -178,9 +183,6 @@ class CaptureMonitor:
             fg="white",
             font=("Segoe UI", 9, "bold"),
         ).pack(side="left", padx=(4, 0))
-
-        btn_row2 = tk.Frame(self.win, bg="#1a1a2e")
-        btn_row2.pack(fill="x", padx=12, pady=(8, 12))
 
         tk.Button(
             btn_row2,

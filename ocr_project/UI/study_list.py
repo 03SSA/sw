@@ -53,7 +53,7 @@ class StudyListWindow:
         self.detail.pack(fill="x")
         detail_scroll.config(command=self.detail.yview)
 
-        bottom = tk.Frame(self.win, padx=12, pady=(0, 12))
+        bottom = tk.Frame(self.win, padx=12, pady=12)
         bottom.pack(fill="x")
 
         tk.Button(bottom, text="Delete Selected", width=14, command=self.delete_selected).pack(side="right")

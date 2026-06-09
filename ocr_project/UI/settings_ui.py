@@ -14,7 +14,7 @@ class SettingsWindow:
 
         self.win = tk.Toplevel(parent)
         self.win.title("설정")
-        self.win.geometry("520x430")
+        self.win.geometry("520x530")
         self.win.minsize(460, 380)
         self.win.configure(bg="#f7f8fb")
 

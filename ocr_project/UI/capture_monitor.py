@@ -67,27 +67,27 @@ class CaptureMonitor:
         x1, y1, x2, y2 = self.region
         width = x2 - x1
         height = y2 - y1
-
+ 
         screen_width = self.parent.winfo_screenwidth()
         screen_height = self.parent.winfo_screenheight()
-
+ 
         panel_width = 480
         panel_height = 450
         panel_x = min(max(10, x1), max(10, screen_width - panel_width - 10))
-
+ 
         if y2 + 10 + panel_height <= screen_height:
             panel_y = y2 + 10
         else:
             panel_y = max(10, y1 - panel_height - 10)
-
+ 
         self.win = tk.Toplevel(self.parent)
         self.win.title("OCR 번역 패널")
         self.win.geometry(f"{panel_width}x{panel_height}+{panel_x}+{panel_y}")
         self.win.attributes("-topmost", True)
         self.win.configure(bg="#1a1a2e")
-        self.win.minsize(350, 280)
+        self.win.minsize(500, 730)
         self.win.protocol("WM_DELETE_WINDOW", self.stop)
-
+ 
         header = tk.Frame(self.win, bg="#4B4FA6", height=40)
         header.pack(fill="x")
         tk.Label(
@@ -97,7 +97,7 @@ class CaptureMonitor:
             bg="#4B4FA6",
             font=("Segoe UI", 11, "bold"),
         ).pack(pady=8)
-
+ 
         self.status_var = tk.StringVar(value="Ready to capture.")
         tk.Label(
             self.win,
@@ -108,96 +108,10 @@ class CaptureMonitor:
             wraplength=390,
             justify="left",
         ).pack(anchor="w", padx=12, pady=(8, 0))
-
-        result_frame = tk.LabelFrame(
-            self.win,
-            text="확정 OCR / 번역 결과",
-            bg="#1a1a2e",
-            fg="#00ff88",
-            padx=8,
-            pady=8,
-        )
-        result_frame.pack(fill="both", expand=True, padx=12, pady=(10, 8))
-
-        scrollbar = tk.Scrollbar(result_frame)
-        scrollbar.pack(side="right", fill="y")
-
-        self.result_text = tk.Text(
-            result_frame,
-            wrap="word",
-            font=("Consolas", 10),
-            bg="#111111",
-            fg="#00ff88",
-            insertbackground="#ffffff",
-            relief="flat",
-            padx=8,
-            pady=8,
-            yscrollcommand=scrollbar.set,
-        )
-        self.result_text.pack(fill="both", expand=True)
-        scrollbar.config(command=self.result_text.yview)
-        self.result_text.insert("1.0", "Waiting for OCR result...")
-
-        btn_row = tk.Frame(self.win, bg="#1a1a2e")
-        btn_row.pack(fill="x", padx=12, pady=(8, 0))
-
-        tk.Label(
-            btn_row,
-            text="원본:",
-            fg="white",
-            bg="#1a1a2e",
-            font=("Segoe UI", 9),
-        ).pack(side="left", padx=(0, 4))
-
-        self.source_lang_var = tk.StringVar(value=self.source_lang)
-        source_combo = ttk.Combobox(
-            btn_row,
-            textvariable=self.source_lang_var,
-            values=LANGUAGE_CODES,
-            state="readonly",
-            width=6,
-        )
-        source_combo.pack(side="left", padx=(0, 4))
-
-        tk.Label(
-            btn_row,
-            text="->",
-            fg="white",
-            bg="#1a1a2e",
-            font=("Segoe UI", 10, "bold"),
-        ).pack(side="left", padx=4)
-
-        tk.Label(
-            btn_row,
-            text="번역:",
-            fg="white",
-            bg="#1a1a2e",
-            font=("Segoe UI", 9),
-        ).pack(side="left", padx=(0, 4))
-
-        self.translate_target_var = tk.StringVar(value=self.target_lang)
-        target_combo = ttk.Combobox(
-            btn_row,
-            textvariable=self.translate_target_var,
-            values=LANGUAGE_CODES,
-            state="readonly",
-            width=6,
-        )
-        target_combo.pack(side="left", padx=(0, 8))
-
-        tk.Button(
-            btn_row,
-            text="다시 번역",
-            width=10,
-            command=self.request_translate,
-            bg="#9b59b6",
-            fg="white",
-            font=("Segoe UI", 9, "bold"),
-        ).pack(side="left", padx=(4, 0))
-
+ 
         btn_row2 = tk.Frame(self.win, bg="#1a1a2e")
-        btn_row2.pack(fill="x", padx=12, pady=(8, 12))
-
+        btn_row2.pack(side="bottom", fill="x", padx=12, pady=(4, 12))
+ 
         tk.Button(
             btn_row2,
             text="레이어 재설정",
@@ -217,7 +131,7 @@ class CaptureMonitor:
             font=("Segoe UI", 9, "bold"),
         ).pack(side="left", padx=(8, 0))
         tk.Button(
-            btn_row,
+            btn_row2,
             text="중지",
             width=8,
             command=self.stop,
@@ -225,6 +139,92 @@ class CaptureMonitor:
             fg="white",
             font=("Segoe UI", 9, "bold"),
         ).pack(side="right")
+ 
+        btn_row = tk.Frame(self.win, bg="#1a1a2e")
+        btn_row.pack(side="bottom", fill="x", padx=12, pady=(4, 0))
+ 
+        tk.Label(
+            btn_row,
+            text="원본:",
+            fg="white",
+            bg="#1a1a2e",
+            font=("Segoe UI", 9),
+        ).pack(side="left", padx=(0, 4))
+ 
+        self.source_lang_var = tk.StringVar(value=self.source_lang)
+        source_combo = ttk.Combobox(
+            btn_row,
+            textvariable=self.source_lang_var,
+            values=LANGUAGE_CODES,
+            state="readonly",
+            width=6,
+        )
+        source_combo.pack(side="left", padx=(0, 4))
+ 
+        tk.Label(
+            btn_row,
+            text="->",
+            fg="white",
+            bg="#1a1a2e",
+            font=("Segoe UI", 10, "bold"),
+        ).pack(side="left", padx=4)
+ 
+        tk.Label(
+            btn_row,
+            text="번역:",
+            fg="white",
+            bg="#1a1a2e",
+            font=("Segoe UI", 9),
+        ).pack(side="left", padx=(0, 4))
+ 
+        self.translate_target_var = tk.StringVar(value=self.target_lang)
+        target_combo = ttk.Combobox(
+            btn_row,
+            textvariable=self.translate_target_var,
+            values=LANGUAGE_CODES,
+            state="readonly",
+            width=6,
+        )
+        target_combo.pack(side="left", padx=(0, 8))
+ 
+        tk.Button(
+            btn_row,
+            text="다시 번역",
+            width=10,
+            command=self.request_translate,
+            bg="#9b59b6",
+            fg="white",
+            font=("Segoe UI", 9, "bold"),
+        ).pack(side="left", padx=(4, 0))
+ 
+        result_frame = tk.LabelFrame(
+            self.win,
+            text="확정 OCR / 번역 결과",
+            bg="#1a1a2e",
+            fg="#00ff88",
+            padx=8,
+            pady=8,
+        )
+        result_frame.pack(fill="both", expand=True, padx=12, pady=(10, 4))
+ 
+        scrollbar = tk.Scrollbar(result_frame)
+        scrollbar.pack(side="right", fill="y")
+ 
+        self.result_text = tk.Text(
+            result_frame,
+            wrap="word",
+            font=("Consolas", 10),
+            bg="#111111",
+            fg="#00ff88",
+            insertbackground="#ffffff",
+            relief="flat",
+            padx=8,
+            pady=8,
+            yscrollcommand=scrollbar.set,
+        )
+        self.result_text.pack(fill="both", expand=True)
+        scrollbar.config(command=self.result_text.yview)
+        self.result_text.insert("1.0", "Waiting for OCR result...")
 
     def get_source_lang(self) -> str:
         if hasattr(self, 'source_lang_var'):

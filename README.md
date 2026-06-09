@@ -11,7 +11,7 @@ Python `tkinter` 기반 Desktop OCR 번역/학습 앱입니다. 사용자가 화
 
 ```bash
 git clone https://github.com/03SSA/sw.git
-cd ocr_project
+cd sw
 ```
 
 ### 2. 가상환경 생성

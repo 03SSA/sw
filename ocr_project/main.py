@@ -1,6 +1,7 @@
 import queue
 import sys
 import threading
+import ssl
 from hashlib import sha1
 from typing import List, Optional, Tuple
 
@@ -21,7 +22,7 @@ from CORE.language_config import (
     get_translation_language,
 )
 
-
+ssl._create_default_https_context = ssl._create_unverified_context
 Region = Tuple[int, int, int, int]
 
 
@@ -44,7 +45,7 @@ class MainApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("OCR Integrated Study App")
-        self.root.geometry("700x600")
+        self.root.geometry("700x700")
         self.root.resizable(True, True)
         self.root.minsize(500, 400)
         self.settings = load_settings()

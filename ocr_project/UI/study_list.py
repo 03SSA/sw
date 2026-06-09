@@ -1,4 +1,3 @@
-import json
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -54,7 +53,7 @@ class StudyListWindow:
         self.detail.pack(fill="x")
         detail_scroll.config(command=self.detail.yview)
 
-        bottom = tk.Frame(self.win, padx=12, pady=(0, 12))
+        bottom = tk.Frame(self.win, padx=12, pady=12)
         bottom.pack(fill="x")
 
         tk.Button(bottom, text="Delete Selected", width=14, command=self.delete_selected).pack(side="right")
@@ -106,22 +105,15 @@ class StudyListWindow:
             if not item:
                 return
 
-            payload = item.get("payload_json")
-            json_block = ""
-            if payload:
-                try:
-                    parsed = json.loads(payload)
-                    json_block = "\n\nJSON Payload:\n" + json.dumps(parsed, ensure_ascii=False, indent=2)
-                except json.JSONDecodeError:
-                    json_block = f"\n\nJSON Payload:\n{payload}"
-
             text = (
                 f"ID: {item['id']}\n"
                 f"Saved At: {item['created_at']}\n"
+                f"Source Language: {item.get('source_language') or '-'}\n"
+                f"Target Language: {item.get('target_language') or '-'}\n"
                 f"Region: {item.get('source_region') or '-'}\n"
                 f"Tags: {item.get('tags') or '-'}\n\n"
-                f"{item['content']}"
-                f"{json_block}"
+                f"OCR Text:\n{item['content']}\n\n"
+                f"Translation:\n{item.get('translation_text') or '-'}"
             )
             self.detail.delete("1.0", "end")
             self.detail.insert("1.0", text)
